@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from "react";
+import { getCursor } from "../util/helpers/getCursor";
 
-export default function PixelCanvas() {
+interface PixelCanvasProps {
+  isGrab: boolean;
+  isGrabbing: boolean;
+}
+
+export default function PixelCanvas({ isGrab, isGrabbing }: PixelCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const penSize = 3;
   const [hoverPos, setHoverPos] = useState<{
@@ -9,6 +15,7 @@ export default function PixelCanvas() {
   } | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [selectedColor, setSelectedColor] = useState("#000000");
+  const [selectedTool, setSelectedTool] = useState<"brush" | "eraser">("brush");
 
   const pixelSize = 16;
   const rows = 48;
@@ -31,7 +38,7 @@ export default function PixelCanvas() {
     if (!ctx) return;
 
     // Clear canvas
-    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+    //ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
     // Draw pixels
     for (let row = 0; row < rows; row++) {
@@ -70,12 +77,7 @@ export default function PixelCanvas() {
             const r = row + dy;
             const c = col + dx;
             if (r >= 0 && r < rows && c >= 0 && c < cols) {
-              ctx.fillRect(
-                c * pixelSize - pixelSize,
-                r * pixelSize - pixelSize,
-                pixelSize,
-                pixelSize,
-              );
+              ctx.fillRect(c * pixelSize, r * pixelSize, pixelSize, pixelSize);
             }
           }
         }
@@ -144,7 +146,7 @@ export default function PixelCanvas() {
           const r = row + dy;
           const c = col + dx;
           if (r >= 0 && r < rows && c >= 0 && c < cols) {
-            newPixels[r - 1][c - 1] = selectedColor;
+            newPixels[r][c] = selectedColor;
           }
         }
       }
@@ -175,6 +177,7 @@ export default function PixelCanvas() {
   return (
     <div>
       <canvas
+        className={getCursor("canvas", isGrab, isGrabbing)}
         ref={canvasRef}
         width={canvasWidth}
         height={canvasHeight}
