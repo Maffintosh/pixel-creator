@@ -2,22 +2,31 @@ import { useEffect, useRef, useState } from "react";
 import { getCursor } from "../util/helpers/getCursor";
 
 interface PixelCanvasProps {
+  zoom: number;
+  pixelSize: number;
   isGrab: boolean;
   isGrabbing: boolean;
+  selectedColor: string;
+  setSelectedColor: React.Dispatch<React.SetStateAction<string>>;
 }
 
-export default function PixelCanvas({ isGrab, isGrabbing }: PixelCanvasProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const penSize = 3;
+export default function PixelCanvas({
+  zoom,
+  pixelSize,
+  isGrab,
+  isGrabbing,
+  selectedColor,
+  setSelectedColor,
+}: PixelCanvasProps) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const gridCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const penSize = 1;
   const [hoverPos, setHoverPos] = useState<{
     row: number;
     col: number;
   } | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [selectedColor, setSelectedColor] = useState("#000000");
-  const [selectedTool, setSelectedTool] = useState<"brush" | "eraser">("brush");
 
-  const pixelSize = 16;
   const rows = 48;
   const cols = 48;
   const canvasWidth = cols * pixelSize;
@@ -27,8 +36,32 @@ export default function PixelCanvas({ isGrab, isGrabbing }: PixelCanvasProps) {
   const [pixels, setPixels] = useState<string[][]>(
     Array(rows)
       .fill(null)
-      .map(() => Array(cols).fill("#ffffff")),
+      .map(() => Array(cols).fill("transparent")),
   );
+
+  // Draw background grid on first page render
+  useEffect(() => {
+    const canvas = gridCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const getGridColor = (row: number, col: number): string => {
+      return ["gray", "#fff"][(row + col) % 2];
+    };
+
+    for (let row = 0; row < rows / pixelSize; row++) {
+      for (let col = 0; col < cols / pixelSize; col++) {
+        ctx.fillStyle = getGridColor(row, col);
+        ctx.fillRect(
+          col * Math.pow(pixelSize, 2),
+          row * Math.pow(pixelSize, 2),
+          Math.pow(pixelSize, 2),
+          Math.pow(pixelSize, 2),
+        );
+      }
+    }
+  }, []);
 
   // Draw the full grid
   const drawCanvas = () => {
@@ -38,7 +71,7 @@ export default function PixelCanvas({ isGrab, isGrabbing }: PixelCanvasProps) {
     if (!ctx) return;
 
     // Clear canvas
-    //ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
     // Draw pixels
     for (let row = 0; row < rows; row++) {
@@ -49,7 +82,7 @@ export default function PixelCanvas({ isGrab, isGrabbing }: PixelCanvasProps) {
     }
 
     // Show ghost brush
-    if (hoverPos && !isDrawing) {
+    if (hoverPos && !isDrawing && !isGrab && !isGrabbing) {
       const { row, col } = hoverPos;
       ctx.fillStyle = selectedColor; // semi-transparent color (hex alpha)
 
@@ -83,21 +116,6 @@ export default function PixelCanvas({ isGrab, isGrabbing }: PixelCanvasProps) {
         }
       }
     }
-
-    // Draw grid
-    //ctx.strokeStyle = "#000";
-    //for (let i = 0; i <= cols; i++) {
-    //  ctx.beginPath();
-    //  ctx.moveTo(i * pixelSize, 0);
-    //  ctx.lineTo(i * pixelSize, canvasHeight);
-    //  ctx.stroke();
-    //}
-    //for (let i = 0; i <= rows; i++) {
-    //  ctx.beginPath();
-    //  ctx.moveTo(0, i * pixelSize);
-    //  ctx.lineTo(canvasWidth, i * pixelSize);
-    //  ctx.stroke();
-    //}
   };
 
   useEffect(() => {
@@ -107,14 +125,15 @@ export default function PixelCanvas({ isGrab, isGrabbing }: PixelCanvasProps) {
   // Convert mouse coordinates to grid cell
   const getCell = (event: React.MouseEvent) => {
     const rect = canvasRef.current!.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
+    const x = (event.clientX - rect.left) / zoom;
+    const y = (event.clientY - rect.top) / zoom;
     const col = Math.floor(x / pixelSize);
     const row = Math.floor(y / pixelSize);
     return { row, col };
   };
 
   const drawPixel = (row: number, col: number) => {
+    if (isGrab || isGrabbing) return;
     if (penSize <= 2) {
       setPixels((prev) => {
         const newPixels = prev.map((r) => [...r]);
@@ -175,8 +194,19 @@ export default function PixelCanvas({ isGrab, isGrabbing }: PixelCanvasProps) {
   };
 
   return (
-    <div>
+    <div
+      className="relative"
+      style={{ transform: `scale(${zoom})`, transformOrigin: "center center" }}
+    >
       <canvas
+        style={{ imageRendering: "pixelated" }}
+        className="absolute -z-10"
+        ref={gridCanvasRef}
+        width={canvasWidth}
+        height={canvasHeight}
+      />
+      <canvas
+        style={{ imageRendering: "pixelated" }}
         className={getCursor("canvas", isGrab, isGrabbing)}
         ref={canvasRef}
         width={canvasWidth}
@@ -189,15 +219,6 @@ export default function PixelCanvas({ isGrab, isGrabbing }: PixelCanvasProps) {
           setHoverPos(null);
         }}
       />
-      <div className="mt-4">
-        <label>Color: </label>
-        <input
-          className="w-10 h-10 rounded-full"
-          type="color"
-          value={selectedColor}
-          onChange={(e) => setSelectedColor(e.target.value)}
-        />
-      </div>
     </div>
   );
 }

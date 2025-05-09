@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { type ReactNode, forwardRef } from "react";
 import { getCursor } from "../../util/helpers/getCursor";
 
 interface WrapperProps {
@@ -6,16 +6,18 @@ interface WrapperProps {
   isGrab: boolean;
   isGrabbing: boolean;
 }
-export default function Wrapper({
-  children,
-  isGrab,
-  isGrabbing,
-}: WrapperProps) {
+export default forwardRef<HTMLDivElement, WrapperProps>(function Wrapper(
+  { children, isGrab, isGrabbing }: WrapperProps,
+  ref,
+) {
   return (
     <div
-      className={`w-[150%] h-[150vh] flex justify-center items-center bg-slate-600 ${getCursor("wrapper", isGrab, isGrabbing)}`}
+      ref={ref}
+      className={`w-screen h-screen overflow-scroll bg-slate-600 ${getCursor("wrapper", isGrab, isGrabbing)}`}
     >
-      {children}
+      <div className="w-[150vw] h-[150vh] flex justify-center items-center">
+        {children}
+      </div>
     </div>
   );
-}
+});

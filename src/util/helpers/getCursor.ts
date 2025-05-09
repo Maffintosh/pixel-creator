@@ -1,25 +1,15 @@
 const getCursor = (
-  target: string,
+  context: string,
   isGrab: boolean,
   isGrabbing: boolean,
 ): string => {
-  switch (target) {
+  switch (context) {
     case "wrapper":
-      if (isGrabbing) {
-        return "cursor-grabbing";
-      } else if (isGrab) {
-        return "cursor-grab";
-      } else {
-        return "cursor-default";
-      }
+      if (!isGrab) return "cursor-default";
+      return isGrabbing ? "cursor-grabbing" : "cursor-grab";
     case "canvas":
-      if (isGrabbing) {
-        return "cursor-grabbing";
-      } else if (isGrab) {
-        return "cursor-grab";
-      } else {
-        return "cursor-crosshair";
-      }
+      if (!isGrab) return "cursor-crosshair";
+      return isGrabbing ? "cursor-grabbing" : "cursor-grab";
     default:
       return "";
   }
