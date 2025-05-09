@@ -13,7 +13,7 @@ export default forwardRef<HTMLDivElement, WrapperProps>(function Wrapper(
   return (
     <div
       ref={ref}
-      className={`w-screen h-screen overflow-scroll bg-slate-600 ${getCursor("wrapper", isGrab, isGrabbing)}`}
+      className={`w-screen h-screen overflow-scroll bg-stone-600 ${getCursor("wrapper", isGrab, isGrabbing)}`}
     >
       <div className="w-[150vw] h-[150vh] flex justify-center items-center">
         {children}

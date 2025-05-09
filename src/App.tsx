@@ -7,11 +7,14 @@ import ToolsPanel from "./components/ToolsPanel";
 export default function App() {
   const [isGrab, setIsGrab] = useState(false);
   const [isGrabbing, setIsGrabbing] = useState(false);
+  const [penSize, setPenSize] = useState(1);
+  const [isCtrlPresed, setIsCtrlPresed] = useState(false);
   const [pixelSize, setPixelSize] = useState(16);
   const [zoom, setZoom] = useState(1);
   const [selectedTool, setSelectedTool] = useState<string>("brush");
   const [selectedColor, setSelectedColor] = useState("#000000");
   const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const ctrlRef = useRef(false);
   const grabRef = useRef(false);
   const grabbingRef = useRef(false);
   const lastPos = useRef({ x: 0, y: 0 });
@@ -36,6 +39,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    ctrlRef.current = isCtrlPresed;
+  }, [isCtrlPresed]);
+
+  useEffect(() => {
     grabbingRef.current = isGrabbing;
   }, [isGrabbing]);
 
@@ -47,7 +54,12 @@ export default function App() {
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
       const delta = e.deltaY > 0 ? -0.1 : 0.1;
-      setZoom((prev) => Math.min(Math.max(prev + delta, 0.1), 5));
+
+      if (ctrlRef.current) {
+        setPenSize((prev) => prev + delta * 10);
+      } else {
+        setZoom((prev) => Math.min(Math.max(prev + delta, 0.1), 5));
+      }
     };
 
     if (wrapperRef.current) {
@@ -72,12 +84,27 @@ export default function App() {
         e.preventDefault();
         setIsGrab(true);
       }
+      if (e.code === "KeyB") {
+        setSelectedTool("brush");
+        setSelectedColor("#000");
+      }
+      if (e.code === "KeyE") {
+        setSelectedTool("eraser");
+        setSelectedColor("transparent");
+      }
+      if (e.code === "ControlLeft") {
+        setIsCtrlPresed(true);
+      }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
       if (e.code === "Space") {
         e.preventDefault();
         setIsGrab(false);
+      }
+
+      if (e.code === "ControlLeft") {
+        setIsCtrlPresed(false);
       }
     };
 
@@ -115,14 +142,15 @@ export default function App() {
       <Wrapper ref={wrapperRef} isGrab={isGrab} isGrabbing={isGrabbing}>
         <PixelCanvas
           zoom={zoom}
+          penSize={penSize}
           pixelSize={pixelSize}
           isGrab={isGrab}
           isGrabbing={isGrabbing}
           selectedColor={selectedColor}
-          setSelectedColor={setSelectedColor}
         />
       </Wrapper>
       <ToolsPanel
+        selectedTool={selectedTool}
         selectedColor={selectedColor}
         setSelectedColor={setSelectedColor}
         setSelectedTool={setSelectedTool}

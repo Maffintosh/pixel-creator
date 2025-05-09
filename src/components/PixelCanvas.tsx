@@ -1,26 +1,28 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { getCursor } from "../util/helpers/getCursor";
+import { drawGhostBrush } from "../util/helpers/drawGhostBrush";
+import { drawBackgroundGrid } from "../util/helpers/drawBackgroundGrid";
+import { refillForegroundGrid } from "../util/helpers/refillForegroundGrid";
 
 interface PixelCanvasProps {
   zoom: number;
+  penSize: number;
   pixelSize: number;
   isGrab: boolean;
   isGrabbing: boolean;
   selectedColor: string;
-  setSelectedColor: React.Dispatch<React.SetStateAction<string>>;
 }
 
 export default function PixelCanvas({
   zoom,
+  penSize,
   pixelSize,
   isGrab,
   isGrabbing,
   selectedColor,
-  setSelectedColor,
 }: PixelCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const gridCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const penSize = 1;
   const [hoverPos, setHoverPos] = useState<{
     row: number;
     col: number;
@@ -46,25 +48,11 @@ export default function PixelCanvas({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const getGridColor = (row: number, col: number): string => {
-      return ["gray", "#fff"][(row + col) % 2];
-    };
-
-    for (let row = 0; row < rows / pixelSize; row++) {
-      for (let col = 0; col < cols / pixelSize; col++) {
-        ctx.fillStyle = getGridColor(row, col);
-        ctx.fillRect(
-          col * Math.pow(pixelSize, 2),
-          row * Math.pow(pixelSize, 2),
-          Math.pow(pixelSize, 2),
-          Math.pow(pixelSize, 2),
-        );
-      }
-    }
+    drawBackgroundGrid(ctx, rows, cols, pixelSize);
   }, []);
 
   // Draw the full grid
-  const drawCanvas = () => {
+  const drawForegroundGrid = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -86,40 +74,12 @@ export default function PixelCanvas({
       const { row, col } = hoverPos;
       ctx.fillStyle = selectedColor; // semi-transparent color (hex alpha)
 
-      if (penSize <= 2) {
-        for (let dy = 0; dy < penSize; dy++) {
-          for (let dx = 0; dx < penSize; dx++) {
-            const r = row + dy;
-            const c = col + dx;
-
-            if (r >= 0 && r < rows && c >= 0 && c < cols) {
-              ctx.fillRect(c * pixelSize, r * pixelSize, pixelSize, pixelSize);
-            }
-          }
-        }
-      } else {
-        for (let dy = 0; dy < penSize; dy++) {
-          for (let dx = 0; dx < penSize; dx++) {
-            if (
-              (dy === 0 && dx === 0) ||
-              (dy === 0 && dx === penSize - 1) ||
-              (dy === penSize - 1 && dx === 0) ||
-              (dy === penSize - 1 && dx === penSize - 1)
-            )
-              continue;
-            const r = row + dy;
-            const c = col + dx;
-            if (r >= 0 && r < rows && c >= 0 && c < cols) {
-              ctx.fillRect(c * pixelSize, r * pixelSize, pixelSize, pixelSize);
-            }
-          }
-        }
-      }
+      drawGhostBrush(ctx, rows, cols, row, col, penSize, pixelSize);
     }
   };
 
-  useEffect(() => {
-    drawCanvas();
+  useLayoutEffect(() => {
+    drawForegroundGrid();
   }, [pixels, hoverPos, isDrawing]);
 
   // Convert mouse coordinates to grid cell
@@ -134,41 +94,18 @@ export default function PixelCanvas({
 
   const drawPixel = (row: number, col: number) => {
     if (isGrab || isGrabbing) return;
-    if (penSize <= 2) {
-      setPixels((prev) => {
-        const newPixels = prev.map((r) => [...r]);
-        for (let dy = 0; dy < penSize; dy++) {
-          for (let dx = 0; dx < penSize; dx++) {
-            const r = row + dy;
-            const c = col + dx;
-
-            if (r >= 0 && r < rows && c >= 0 && c < cols) {
-              newPixels[r][c] = selectedColor;
-            }
-          }
-        }
-        return newPixels;
-      });
-    }
 
     setPixels((prev) => {
       const newPixels = prev.map((r) => [...r]);
-      for (let dy = 0; dy < penSize; dy++) {
-        for (let dx = 0; dx < penSize; dx++) {
-          if (
-            (dy === 0 && dx === 0) ||
-            (dy === 0 && dx === penSize - 1) ||
-            (dy === penSize - 1 && dx === 0) ||
-            (dy === penSize - 1 && dx === penSize - 1)
-          )
-            continue;
-          const r = row + dy;
-          const c = col + dx;
-          if (r >= 0 && r < rows && c >= 0 && c < cols) {
-            newPixels[r][c] = selectedColor;
-          }
-        }
-      }
+      refillForegroundGrid(
+        newPixels,
+        selectedColor,
+        penSize,
+        rows,
+        cols,
+        row,
+        col,
+      );
       return newPixels;
     });
   };
@@ -215,7 +152,6 @@ export default function PixelCanvas({
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={() => {
-          handleMouseUp();
           setHoverPos(null);
         }}
       />
