@@ -1,33 +1,28 @@
 import ReactDOM from "react-dom";
 import BrushIcon from "../ui/icons/brush";
 import EraserIcon from "../ui/icons/Eraser";
+import { useSelectedToolContext } from "../store/SelectedToolContext";
 
-interface ToolsPanelProps {
-  selectedTool: string;
-  selectedColor: string;
-  setSelectedColor: React.Dispatch<React.SetStateAction<string>>;
-  setSelectedTool: React.Dispatch<React.SetStateAction<string>>;
-}
+export default function ToolsPanel() {
+  const { selectedTool, selectedColor, setSelectedTool, setSelectedColor } =
+    useSelectedToolContext();
 
-export default function ToolsPanel({
-  selectedTool,
-  selectedColor,
-  setSelectedColor,
-  setSelectedTool,
-}: ToolsPanelProps) {
   const applySelectedStyles = (context: string) => {
     return selectedTool === context
       ? "outline-2 outline-cyan-500 rounded-sm"
       : "";
   };
+
   const handleSetBrush = () => {
     setSelectedTool("brush");
     setSelectedColor("#000");
   };
+
   const handleSetEraser = () => {
     setSelectedTool("eraser");
     setSelectedColor("transparent");
   };
+
   return ReactDOM.createPortal(
     <div className="fixed top-4 left-4 flex flex-col items-center px-2 py-4 gap-4 z-10 rounded-sm bg-neutral-300">
       <button
@@ -43,7 +38,7 @@ export default function ToolsPanel({
         <EraserIcon size={32} color="black" />
       </button>
       <input
-        className="block w-[32px] h-[32px]"
+        className="block w-[32px] h-[32px] rounded-full"
         type="color"
         value={selectedColor}
         onChange={(e) => setSelectedColor(e.target.value)}
