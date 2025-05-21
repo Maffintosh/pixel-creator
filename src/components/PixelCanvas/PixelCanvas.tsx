@@ -123,6 +123,10 @@ export default function PixelCanvas() {
     setIsDrawing(false);
   };
 
+  const handleMouseLeave = () => {
+    setHoverPos(null);
+  };
+
   return (
     <div
       className="relative"
@@ -144,9 +148,7 @@ export default function PixelCanvas() {
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
-        onMouseLeave={() => {
-          setHoverPos(null);
-        }}
+        onMouseLeave={handleMouseLeave}
       />
     </div>
   );

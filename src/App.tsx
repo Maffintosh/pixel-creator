@@ -8,6 +8,7 @@ import { useAppStateContext } from "./store/AppStateContext";
 import { useSelectedToolContext } from "./store/SelectedToolContext";
 import { useCanvasSettingsContext } from "./store/CanvasSettingsContext";
 import { scrollToCenter } from "./util/helpers/scrollToCenter";
+import ColorPicker from "./components/ColorPicker";
 
 export default function App() {
   const {
@@ -170,6 +171,7 @@ export default function App() {
           </div>
         )}
       </Wrapper>
+      {isCanvasCreated ? <ColorPicker /> : <Fragment />}
       {isCanvasCreated ? <ToolsPanel /> : <Fragment />}
       {isModalActive ? <CreateCanvasModal /> : <Fragment />}
     </>

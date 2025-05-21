@@ -4,7 +4,7 @@ import EraserIcon from "../ui/icons/Eraser";
 import { useSelectedToolContext } from "../store/SelectedToolContext";
 
 export default function ToolsPanel() {
-  const { selectedTool, selectedColor, setSelectedTool, setSelectedColor } =
+  const { selectedTool, setSelectedTool, setSelectedColor, selectedColor } =
     useSelectedToolContext();
 
   const applySelectedStyles = (context: string) => {
@@ -26,7 +26,8 @@ export default function ToolsPanel() {
   return ReactDOM.createPortal(
     <div className="fixed top-4 left-4 flex flex-col items-center px-2 py-4 gap-4 z-10 rounded-sm bg-neutral-300">
       <button
-        className={`${applySelectedStyles("brush")} p-[2px] cursor-pointer`}
+        style={{ backgroundColor: selectedColor }}
+        className={`relative ${applySelectedStyles("brush")} p-[2px] cursor-pointer`}
         onClick={handleSetBrush}
       >
         <BrushIcon size={32} color="black" />
@@ -37,12 +38,6 @@ export default function ToolsPanel() {
       >
         <EraserIcon size={32} color="black" />
       </button>
-      <input
-        className="block w-[32px] h-[32px] rounded-full"
-        type="color"
-        value={selectedColor}
-        onChange={(e) => setSelectedColor(e.target.value)}
-      />
     </div>,
     document.getElementById("tools-panel")!,
   );
