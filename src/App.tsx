@@ -9,6 +9,7 @@ import { useSelectedToolContext } from "./store/SelectedToolContext";
 import { useCanvasSettingsContext } from "./store/CanvasSettingsContext";
 import { scrollToCenter } from "./util/helpers/scrollToCenter";
 import ColorPicker from "./components/ColorPicker";
+import ColorPallete from "./components/ColorPallete";
 
 export default function App() {
   const {
@@ -23,8 +24,7 @@ export default function App() {
     setIsGrabbing,
     setIsCtrlPressed,
   } = useAppStateContext();
-  const { setPenSize, setSelectedTool, setSelectedColor } =
-    useSelectedToolContext();
+  const { setPenSize, setSelectedTool } = useSelectedToolContext();
   const { setZoom } = useCanvasSettingsContext();
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const modalRef = useRef(false);
@@ -99,11 +99,9 @@ export default function App() {
     }
     if (e.code === "KeyB") {
       setSelectedTool("brush");
-      setSelectedColor("#000");
     }
     if (e.code === "KeyE") {
       setSelectedTool("eraser");
-      setSelectedColor("transparent");
     }
     if (e.code === "ControlLeft") {
       setIsCtrlPressed(true);
@@ -172,6 +170,7 @@ export default function App() {
         )}
       </Wrapper>
       {isCanvasCreated ? <ColorPicker /> : <Fragment />}
+      {isCanvasCreated ? <ColorPallete /> : <Fragment />}
       {isCanvasCreated ? <ToolsPanel /> : <Fragment />}
       {isModalActive ? <CreateCanvasModal /> : <Fragment />}
     </>

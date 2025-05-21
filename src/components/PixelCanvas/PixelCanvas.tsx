@@ -2,16 +2,17 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { getCursor } from "../../util/helpers/getCursor";
 import { drawGhostBrush } from "../../util/helpers/drawGhostBrush";
 import { drawBackgroundGrid } from "../../util/helpers/drawBackgroundGrid";
-import { refillForegroundGrid } from "../../util/helpers/refillForegroundGrid";
 import { useCanvasSettingsContext } from "../../store/CanvasSettingsContext";
 import { useAppStateContext } from "../../store/AppStateContext";
 import { useSelectedToolContext } from "../../store/SelectedToolContext";
 import { getCanvasCtx } from "../../util/helpers/getCanvasContext";
+import hsvToCss from "../../util/helpers/hsvToCss";
+import { isEdge } from "../../util/helpers/isEdge";
 
 export default function PixelCanvas() {
   const { resolution, zoom, pixelSize } = useCanvasSettingsContext();
   const { isGrab, isGrabbing } = useAppStateContext();
-  const { penSize, selectedColor } = useSelectedToolContext();
+  const { penSize, selectedColor, selectedTool } = useSelectedToolContext();
   const [isDrawing, setIsDrawing] = useState(false);
   const [hoverPos, setHoverPos] = useState<{
     row: number;
@@ -55,7 +56,8 @@ export default function PixelCanvas() {
     // Show ghost brush
     if (hoverPos && !isDrawing && !isGrab && !isGrabbing) {
       const { row, col } = hoverPos;
-      ctx.fillStyle = selectedColor;
+      ctx.fillStyle =
+        selectedTool === "eraser" ? "transparent" : hsvToCss(selectedColor);
 
       drawGhostBrush(
         ctx,
@@ -90,15 +92,23 @@ export default function PixelCanvas() {
       //if (prev[row][col] === selectedColor) return prev;
 
       const newPixels = prev.map((r) => [...r]);
-      refillForegroundGrid(
-        newPixels,
-        selectedColor,
-        penSize,
-        logicHeight,
-        logicWidth,
-        row,
-        col,
-      );
+
+      for (let dy = 0; dy < penSize; dy++) {
+        for (let dx = 0; dx < penSize; dx++) {
+          if (penSize > 2 && isEdge(penSize, dy, dx)) continue;
+
+          const r = row + dy;
+          const c = col + dx;
+
+          if (r >= 0 && r < logicHeight && c >= 0 && c < logicWidth) {
+            newPixels[r][c] =
+              selectedTool === "eraser"
+                ? "transparent"
+                : hsvToCss(selectedColor);
+          }
+        }
+      }
+
       return newPixels;
     });
   };

@@ -3,7 +3,7 @@ import { getCanvasCtx } from "../util/helpers/getCanvasContext";
 import { useSelectedToolContext } from "../store/SelectedToolContext";
 
 export default function ColorPicker() {
-  const { setSelectedColor } = useSelectedToolContext();
+  const { selectedColor, setSelectedColor } = useSelectedToolContext();
   const [hue, setHue] = useState(0);
   const [sv, setSV] = useState({ s: 0, v: 0 });
 
@@ -27,8 +27,8 @@ export default function ColorPicker() {
     ctx.fillStyle = hueGradient;
     ctx.fillRect(0, 0, width, height);
 
-    // Draw HUE selector
-    const y = (hue / 360) * height;
+    // Draw HUE marker
+    const y = (selectedColor.h / 360) * height;
 
     ctx.beginPath();
     ctx.moveTo(0, y);
@@ -42,7 +42,7 @@ export default function ColorPicker() {
     const ctx = getCanvasCtx(svRef.current);
 
     // Base color
-    ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+    ctx.fillStyle = `hsl(${selectedColor.h}, 100%, 50%)`;
     ctx.fillRect(0, 0, cnvSize, cnvSize);
 
     // Tint overlay
@@ -60,8 +60,8 @@ export default function ColorPicker() {
     ctx.fillRect(0, 0, cnvSize, cnvSize);
 
     // Draw SV marker
-    const x = sv.s * cnvSize;
-    const y = (1 - sv.v) * cnvSize;
+    const x = selectedColor.s * cnvSize;
+    const y = (1 - selectedColor.v) * cnvSize;
 
     ctx.beginPath();
     ctx.arc(x, y, 10, 0, Math.PI * 2);
@@ -124,8 +124,13 @@ export default function ColorPicker() {
   useEffect(() => {
     drawSV();
     drawHue();
-    setSelectedColor(`hsl(${hue}, ${sv.s * 100}%, ${sv.v * 50}%)`);
+    setSelectedColor({ h: hue, s: sv.s, v: sv.v });
   }, [hue, sv]);
+
+  useEffect(() => {
+    drawHue();
+    drawSV();
+  }, [selectedColor]);
 
   return (
     <div className="fixed top-4 right-8 flex gap-4">

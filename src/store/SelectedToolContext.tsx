@@ -1,6 +1,12 @@
 import { createContext, type ReactNode, useContext, useState } from "react";
 import { SSA } from "../util/types";
 
+export type HSV = {
+  h: number;
+  s: number;
+  v: number;
+};
+
 interface SelectedToolProviderProps {
   children: ReactNode;
 }
@@ -8,10 +14,10 @@ interface SelectedToolProviderProps {
 interface SelectedToolContext {
   penSize: number;
   selectedTool: string;
-  selectedColor: string;
+  selectedColor: HSV;
   setPenSize: SSA<number>;
   setSelectedTool: SSA<string>;
-  setSelectedColor: SSA<string>;
+  setSelectedColor: SSA<HSV>;
 }
 
 const SelectedToolContext = createContext<SelectedToolContext | null>(null);
@@ -21,7 +27,11 @@ export default function SelectedToolProvider({
 }: SelectedToolProviderProps) {
   const [penSize, setPenSize] = useState(1);
   const [selectedTool, setSelectedTool] = useState("brush");
-  const [selectedColor, setSelectedColor] = useState("#000");
+  const [selectedColor, setSelectedColor] = useState<HSV>({
+    h: 0,
+    s: 0.1,
+    v: 0.1,
+  });
   return (
     <SelectedToolContext.Provider
       value={{
