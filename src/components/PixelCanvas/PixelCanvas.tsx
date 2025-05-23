@@ -1,6 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { getCursor } from "../../util/helpers/getCursor";
-import { drawGhostBrush } from "../../util/helpers/drawGhostBrush";
 import { drawBackgroundGrid } from "../../util/helpers/drawBackgroundGrid";
 import { useCanvasSettingsContext } from "../../store/CanvasSettingsContext";
 import { useAppStateContext } from "../../store/AppStateContext";
@@ -19,8 +18,8 @@ export default function PixelCanvas() {
     col: number;
   } | null>(null);
 
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const gridCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const gridCanvasRef = useRef<HTMLCanvasElement>(null);
 
   const { logicWidth, logicHeight } = resolution;
   const visualWidth = logicWidth * pixelSize;
@@ -52,22 +51,28 @@ export default function PixelCanvas() {
         ctx.fillRect(col * pixelSize, row * pixelSize, pixelSize, pixelSize);
       }
     }
+  };
 
-    // Show ghost brush
-    if (hoverPos && !isDrawing && !isGrab && !isGrabbing) {
+  const drawGhostBrush = () => {
+    if (hoverPos && !isDrawing && !isGrab) {
+      const ctx = getCanvasCtx(canvasRef.current);
       const { row, col } = hoverPos;
+
       ctx.fillStyle =
         selectedTool === "eraser" ? "transparent" : hsvToCss(selectedColor);
 
-      drawGhostBrush(
-        ctx,
-        logicHeight,
-        logicWidth,
-        row,
-        col,
-        penSize,
-        pixelSize,
-      );
+      for (let dy = 0; dy < penSize; dy++) {
+        for (let dx = 0; dx < penSize; dx++) {
+          if (penSize > 2 && isEdge(penSize, dy, dx)) continue;
+
+          const r = row + dy;
+          const c = col + dx;
+
+          if (r >= 0 && r < logicHeight && c >= 0 && c < logicWidth) {
+            ctx.fillRect(c * pixelSize, r * pixelSize, pixelSize, pixelSize);
+          }
+        }
+      }
     }
   };
 
@@ -75,22 +80,25 @@ export default function PixelCanvas() {
     drawForegroundGrid();
   }, [pixels, hoverPos, isDrawing]);
 
+  useLayoutEffect(() => {
+    drawGhostBrush();
+  }, [hoverPos]);
+
   // Convert mouse coordinates to grid cell
-  const getCell = (event: React.MouseEvent) => {
+  const getCell = (evt: React.MouseEvent) => {
     const rect = canvasRef.current!.getBoundingClientRect();
-    const x = (event.clientX - rect.left) / zoom;
-    const y = (event.clientY - rect.top) / zoom;
+    const x = (evt.clientX - rect.left) / zoom;
+    const y = (evt.clientY - rect.top) / zoom;
     const col = Math.floor(x / pixelSize);
     const row = Math.floor(y / pixelSize);
+
     return { row, col };
   };
 
   const drawPixel = (row: number, col: number) => {
-    if (isGrab || isGrabbing) return;
+    if (isGrab) return;
 
     setPixels((prev) => {
-      //if (prev[row][col] === selectedColor) return prev;
-
       const newPixels = prev.map((r) => [...r]);
 
       for (let dy = 0; dy < penSize; dy++) {
