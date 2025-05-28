@@ -32,6 +32,15 @@ export default function PixelCanvas() {
       .map(() => Array(logicWidth).fill("transparent")),
   );
 
+  const [history, setHistory] = useState<string[][][]>([]);
+  const [historyStep, setHistoryStep] = useState(0);
+
+  useEffect(() => {
+    const initial = pixels.map((row) => [...row]);
+    setHistory([initial]);
+    setHistoryStep(0);
+  }, []);
+
   // Draw background grid on first page render
   useEffect(() => {
     const ctx = getCanvasCtx(gridCanvasRef.current);
@@ -139,11 +148,41 @@ export default function PixelCanvas() {
 
   const handleMouseUp = () => {
     setIsDrawing(false);
+
+    const newPixels = pixels.map((row) => [...row]);
+
+    setHistory((prev) => {
+      const newHistory = prev.slice(0, historyStep + 1);
+      return [...newHistory, newPixels];
+    });
+
+    setHistoryStep((prev) => prev + 1);
   };
 
   const handleMouseLeave = () => {
     setHoverPos(null);
   };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key.toLocaleLowerCase() === "z") {
+        e.preventDefault();
+        console.log("Pressed");
+
+        setHistoryStep((prev) => Math.max(0, prev - 1));
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  useEffect(() => {
+    if (history[historyStep]) {
+      setPixels(history[historyStep].map((row) => [...row]));
+    }
+  }, [historyStep]);
 
   return (
     <div
