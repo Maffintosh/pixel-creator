@@ -24,8 +24,10 @@ export default function App() {
     setIsGrabbing,
     setIsCtrlPressed,
   } = useAppStateContext();
+
   const { setPenSize, setSelectedTool } = useSelectedToolContext();
   const { setZoom } = useCanvasSettingsContext();
+
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const modalRef = useRef(false);
   const ctrlRef = useRef(false);

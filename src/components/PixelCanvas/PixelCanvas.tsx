@@ -6,54 +6,52 @@ import { useAppStateContext } from "../../store/AppStateContext";
 import { useSelectedToolContext } from "../../store/SelectedToolContext";
 import { getCanvasCtx } from "../../util/helpers/getCanvasContext";
 import hsvToCss from "../../util/helpers/hsvToCss";
-import { isEdge } from "../../util/helpers/isEdge";
 
 export default function PixelCanvas() {
   const { resolution, zoom, pixelSize } = useCanvasSettingsContext();
   const { isGrab, isGrabbing } = useAppStateContext();
   const { penSize, selectedColor, selectedTool } = useSelectedToolContext();
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [hoverPos, setHoverPos] = useState<{
-    row: number;
-    col: number;
-  } | null>(null);
 
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [hoverPos, setHoverPos] = useState<{ row: number; col: number } | null>(
+    null,
+  );
+
   const gridCanvasRef = useRef<HTMLCanvasElement>(null);
+  const pixelCanvasRef = useRef<HTMLCanvasElement>(null);
+  const ghostCanvasRef = useRef<HTMLCanvasElement>(null);
 
   const { logicWidth, logicHeight } = resolution;
   const visualWidth = logicWidth * pixelSize;
   const visualHeight = logicHeight * pixelSize;
 
-  // Store pixel colors as 2D array
+  // State for pixels and history
   const [pixels, setPixels] = useState<string[][]>(
     Array(logicHeight)
       .fill(null)
       .map(() => Array(logicWidth).fill("transparent")),
   );
-
   const [history, setHistory] = useState<string[][][]>([]);
   const [historyStep, setHistoryStep] = useState(0);
 
+  // Init history
   useEffect(() => {
     const initial = pixels.map((row) => [...row]);
     setHistory([initial]);
     setHistoryStep(0);
   }, []);
 
-  // Draw background grid on first page render
+  // Draw background grid
   useEffect(() => {
     const ctx = getCanvasCtx(gridCanvasRef.current);
     drawBackgroundGrid(ctx, logicHeight, logicWidth, pixelSize);
   }, []);
 
-  // Draw the full grid
-  const drawForegroundGrid = () => {
-    const ctx = getCanvasCtx(canvasRef.current);
-    // Clear canvas from ghost brush
+  // Redraw pixel layer
+  const drawPixelCanvas = () => {
+    const ctx = getCanvasCtx(pixelCanvasRef.current);
     ctx.clearRect(0, 0, visualWidth, visualHeight);
 
-    // Draw pixels
     for (let row = 0; row < logicHeight; row++) {
       for (let col = 0; col < logicWidth; col++) {
         ctx.fillStyle = pixels[row][col];
@@ -62,17 +60,22 @@ export default function PixelCanvas() {
     }
   };
 
+  // Redraw ghost brush
   const drawGhostBrush = () => {
-    if (hoverPos && !isDrawing && !isGrab) {
-      const ctx = getCanvasCtx(canvasRef.current);
-      const { row, col } = hoverPos;
+    const ctx = getCanvasCtx(ghostCanvasRef.current);
+    ctx.clearRect(0, 0, visualWidth, visualHeight);
 
+    if (hoverPos && !isDrawing && !isGrab) {
+      const { row, col } = hoverPos;
       ctx.fillStyle =
         selectedTool === "eraser" ? "transparent" : hsvToCss(selectedColor);
 
       for (let dy = 0; dy < penSize; dy++) {
         for (let dx = 0; dx < penSize; dx++) {
-          if (penSize > 2 && isEdge(penSize, dy, dx)) continue;
+          const center = (penSize - 1) / 2;
+          const dist = Math.sqrt((dx - center) ** 2 + (dy - center) ** 2);
+
+          if (dist > center) continue;
 
           const r = row + dy;
           const c = col + dx;
@@ -86,55 +89,63 @@ export default function PixelCanvas() {
   };
 
   useLayoutEffect(() => {
-    drawForegroundGrid();
-  }, [pixels, hoverPos, isDrawing]);
+    drawPixelCanvas();
+  }, [pixels]);
 
   useLayoutEffect(() => {
     drawGhostBrush();
-  }, [hoverPos]);
+  }, [hoverPos, isDrawing]);
 
-  // Convert mouse coordinates to grid cell
   const getCell = (evt: React.MouseEvent) => {
-    const rect = canvasRef.current!.getBoundingClientRect();
+    const rect = pixelCanvasRef.current!.getBoundingClientRect();
     const x = (evt.clientX - rect.left) / zoom;
     const y = (evt.clientY - rect.top) / zoom;
-    const col = Math.floor(x / pixelSize);
-    const row = Math.floor(y / pixelSize);
-
-    return { row, col };
+    return {
+      col: Math.floor(x / pixelSize),
+      row: Math.floor(y / pixelSize),
+    };
   };
 
   const drawPixel = (row: number, col: number) => {
     if (isGrab) return;
 
     setPixels((prev) => {
-      const newPixels = prev.map((r) => [...r]);
-
+      const next = prev.map((r) => [...r]);
       for (let dy = 0; dy < penSize; dy++) {
         for (let dx = 0; dx < penSize; dx++) {
-          if (penSize > 2 && isEdge(penSize, dy, dx)) continue;
+          const center = (penSize - 1) / 2;
+          const dist = Math.sqrt((dx - center) ** 2 + (dy - center) ** 2);
+
+          if (dist > center) continue;
 
           const r = row + dy;
           const c = col + dx;
 
           if (r >= 0 && r < logicHeight && c >= 0 && c < logicWidth) {
-            newPixels[r][c] =
+            next[r][c] =
               selectedTool === "eraser"
                 ? "transparent"
                 : hsvToCss(selectedColor);
           }
         }
       }
-
-      return newPixels;
+      return next;
     });
   };
 
-  // HANDLERS
+  // Handlers
   const handleMouseDown = (e: React.MouseEvent) => {
     const { row, col } = getCell(e);
     drawPixel(row, col);
     setIsDrawing(true);
+  };
+
+  const handleMouseUp = () => {
+    setIsDrawing(false);
+    const newPixels = pixels.map((row) => [...row]);
+
+    setHistory((prev) => [...prev.slice(0, historyStep + 1), newPixels]);
+    setHistoryStep((prev) => prev + 1);
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -146,38 +157,24 @@ export default function PixelCanvas() {
     }
   };
 
-  const handleMouseUp = () => {
-    setIsDrawing(false);
-
-    const newPixels = pixels.map((row) => [...row]);
-
-    setHistory((prev) => {
-      const newHistory = prev.slice(0, historyStep + 1);
-      return [...newHistory, newPixels];
-    });
-
-    setHistoryStep((prev) => prev + 1);
-  };
-
   const handleMouseLeave = () => {
     setHoverPos(null);
+    setIsDrawing(false);
   };
 
+  // Undo with CTRL+Z
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.key.toLocaleLowerCase() === "z") {
+      if (e.ctrlKey && e.key.toLowerCase() === "z") {
         e.preventDefault();
-        console.log("Pressed");
-
         setHistoryStep((prev) => Math.max(0, prev - 1));
       }
     };
-
     window.addEventListener("keydown", handleKeyDown);
-
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  // Apply undo history
   useEffect(() => {
     if (history[historyStep]) {
       setPixels(history[historyStep].map((row) => [...row]));
@@ -187,25 +184,37 @@ export default function PixelCanvas() {
   return (
     <div
       className="relative"
-      style={{ transform: `scale(${zoom})`, transformOrigin: "center center" }}
+      style={{
+        width: visualWidth,
+        height: visualHeight,
+        transform: `scale(${zoom})`,
+        transformOrigin: "center center",
+      }}
     >
       <canvas
-        style={{ imageRendering: "pixelated" }}
-        className="absolute -z-10"
         ref={gridCanvasRef}
         width={visualWidth}
         height={visualHeight}
+        className="absolute -z-10"
       />
       <canvas
-        style={{ imageRendering: "pixelated" }}
-        className={getCursor("canvas", isGrab, isGrabbing)}
-        ref={canvasRef}
+        ref={pixelCanvasRef}
         width={visualWidth}
         height={visualHeight}
+        className={`absolute ${getCursor("canvas", isGrab, isGrabbing)}`}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
+      />
+      <canvas
+        ref={ghostCanvasRef}
+        width={visualWidth}
+        height={visualHeight}
+        className="absolute z-10"
+        style={{
+          pointerEvents: "none", // Prevent from blocking interactions
+        }}
       />
     </div>
   );

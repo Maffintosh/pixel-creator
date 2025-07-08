@@ -9,4 +9,5 @@ export default defineConfig({
   server: {
     allowedHosts: true,
   },
+  base: "/pixel-creator",
 });
